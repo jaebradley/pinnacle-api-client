@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -41,6 +42,20 @@ type StatusDetails struct {
 	Description      string                  `json:"description"`
 	Services         []ServiceStatus         `json:"services"`
 	UpstreamServices []UpstreamServiceStatus `json:"upstream"`
+}
+
+type MatchupOddsPrice struct {
+	ParticipantId uint64  `json:"participantId"`
+	Points        float64 `json:"points"`
+	Price         float64 `json:"price"`
+}
+
+type MatchupOdds struct {
+	MatchupId uint64             `json:"matchupId"`
+	Key       string             `json:"key"`
+	Type      string             `json:"type"`
+	Version   uint64             `json:"version"`
+	Prices    []MatchupOddsPrice `json:"prices"`
 }
 
 func New(authorizationToken *string, httpClient *http.Client) (client Client) {
@@ -130,4 +145,54 @@ func FetchStatus(client *Client) (details StatusDetails, err error) {
 	}
 
 	return details, nil
+}
+
+func FetchLeagueStraightOdds(client *Client, leagueId uint64) (odds []MatchupOdds, err error) {
+	odds = []MatchupOdds{}
+
+	details, err := fetchApplicationDetails(client)
+
+	if err != nil {
+		return odds, err
+	}
+
+	client.authorizationToken = details.ApiDetails.HaywireDetails.ApiKey
+
+	u := url.URL{
+		Scheme: "https",
+		Host:   "guest.api.arcadia.pinnacle.com",
+		Path:   fmt.Sprintf("0.1/leagues/%d/markets/straight", leagueId),
+	}
+
+	request, err := http.NewRequest(
+		"GET",
+		u.String(),
+		nil,
+	)
+
+	if err != nil {
+		return odds, err
+	}
+
+	request.Header.Add("X-API-KEY", client.authorizationToken)
+
+	response, err := client.Client.Do(request)
+	if err != nil {
+		return odds, err
+	}
+
+	defer response.Body.Close()
+
+	body, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		return odds, err
+	}
+
+	err = json.Unmarshal(body, &odds)
+	if err != nil {
+		return odds, err
+	}
+
+	return odds, nil
 }

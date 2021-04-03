@@ -354,3 +354,79 @@ func TestFetchingStatus(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestFetchingLeagueStraightOdds(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.String() != "https://guest.api.arcadia.pinnacle.com/0.1/leagues/487/markets/straight" {
+			t.Fail()
+		}
+
+		rw.Write([]byte(`[
+			{
+				"cutoffAt": "2021-04-04T01:10:00+00:00",
+				"key": "s;0;ou",
+				"limits": [
+					{
+						"amount": 600,
+						"type": "maxRiskStake"
+					}
+				],
+				"matchupId": 1297204758,
+				"period": 0,
+				"prices": [
+					{
+						"participantId": 1297204759,
+						"points": 2.5,
+						"price": 144
+					},
+					{
+						"participantId": 1297204760,
+						"points": 2.5,
+						"price": -199
+					}
+				],
+				"type": "total",
+				"version": 1077148336
+			},
+			{
+				"cutoffAt": "2021-04-04T00:10:00+00:00",
+				"key": "s;0;ou",
+				"limits": [
+					{
+						"amount": 600,
+						"type": "maxRiskStake"
+					}
+				],
+				"matchupId": 1297800427,
+				"period": 0,
+				"prices": [
+					{
+						"participantId": 1297800428,
+						"points": 10.5,
+						"price": 112
+					},
+					{
+						"participantId": 1297800429,
+						"points": 10.5,
+						"price": -150
+					}
+				],
+				"type": "total",
+				"version": 1077057688
+			}
+		]`))
+	}))
+
+	defer server.Close()
+
+	client := Client{Client: server.Client()}
+	body, err := FetchLeagueStraightOdds(&client, 487)
+
+	if nil != err {
+		t.Fail()
+	}
+
+	if len(body) < 1 {
+		t.Fail()
+	}
+}
